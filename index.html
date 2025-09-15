@@ -1,40 +1,788 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Card Collector</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f9fafb; margin: 0; padding: 0; }
-    header { text-align: center; padding: 1rem; background: #1d4ed8; color: #fff; }
-    header img { height: 60px; vertical-align: middle; margin-right: 10px; }
-    header h1 { display: inline-block; margin: 0; vertical-align: middle; font-size: 1.8rem; }
-    header p { margin: 0.3rem 0 0; font-size: 1rem; font-style: italic; }
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Card Collector List Generator — Sandbox Test</title>
+<style>
+  :root{--bg:#f7fafc;--card:#ffffff;--muted:#6b7280;--accent:#1d4ed8;--success:#10b981}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:#0f172a}
+  header{position:sticky;top:0;background:linear-gradient(90deg,#111827,#1f2937);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px}
+  header img.logo{height:48px;border-radius:8px}
+  .brand{display:flex;flex-direction:column}
+  .brand h1{margin:0;font-size:1.05rem}
+  .brand p{margin:0;font-size:.8rem;opacity:.9;font-style:italic}
+  main{max-width:1100px;margin:20px auto;padding:16px}
+  .topnote{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .tabs{display:flex;gap:8px}
+  .tab{padding:8px 12px;border-radius:10px;cursor:pointer;background:#fff;color:#111;border:1px solid rgba(2,6,23,.06);font-weight:700}
+  .tab.active{background:var(--accent);color:#fff;box-shadow:0 10px 30px rgba(29,78,216,.14)}
+  .layout{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:960px){.layout{grid-template-columns:360px 1fr}}
+  .panel{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 22px rgba(2,6,23,.04)}
+  .upload-area{border:2px dashed rgba(29,78,216,.14);padding:14px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .upload-area input{display:none}
+  .preview-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:10px}
+  .preview-item{background:#f8fafc;padding:8px;border-radius:8px;font-size:.85rem;text-align:center;border:1px solid rgba(2,6,23,.04)}
+  .controls{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:8px}
+  .btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+  .btn.ghost{background:#fff;color:#111;border:1px solid rgba(2,6,23,.06)}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{padding:8px;border-bottom:1px solid #eef2f7;text-align:left}
+  td .thumb{width:56px;height:56px;object-fit:cover;border-radius:6px;margin-right:8px;vertical-align:middle}
+  .footer{margin-top:18px;padding:18px;text-align:center;color:var(--muted);font-size:.9rem}
+  .small{font-size:.86rem;color:var(--muted)}
+  /* toast */
+  .toast-wrap{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .toast{min-width:220px;padding:10px 12px;border-radius:10px;color:#fff;display:flex;gap:8px;align-items:center;box-shadow:0 14px 40px rgba(2,6,23,.12)}
+  .toast.info{background:linear-gradient(90deg,#1d4ed8,#3b82f6)}
+  .toast.success{background:linear-gradient(90deg,#059669,#10b981)}
+  .toast.warn{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+  .toast.error{background:linear-gradient(90deg,#ef4444,#dc2626)}
+  /* hidden download button */
+  .download-hidden{display:none}
+  /* overlay instruction */
+  .notice{background:#fff3cd;color:#664d03;padding:10px;border-radius:8px;border:1px solid #ffeeba;margin-bottom:12px}
+  .infoBar{background:#eef2ff;border-left:4px solid #1d4ed8;padding:10px;border-radius:6px;margin-bottom:12px}
+</style>
+<!-- PAYPAL SDK: replace CLIENT ID below with your sandbox client id; currently placeholder -->
+<script id="paypal-sdk" src="https://www.paypal.com/sdk/js?client-id=AXInS6qZ9UlBqeuE_jSrgjfRzproK4yadK-LVjMGUbMHVzpwY5WoVicyqp3qPG7qscH1-CmRpFIU2ifJ&currency=USD"></script>
+</head>
+<body>
 
-    .mode-selector { margin: 1rem auto; text-align: center; }
-    .mode-selector button { margin: 0.5rem; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; color: #fff; transition: transform 0.2s; }
-    .mode-selector button:hover { transform: scale(1.05); }
-    .mode-selector button.active { box-shadow: 0 0 5px rgba(0,0,0,0.3); }
-    .upload-area { border: 2px dashed #3b82f6; border-radius: 1rem; height: 150px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; margin: 1rem auto; max-width: 500px; }
-    .upload-area:hover { background: #e0f2fe; }
-    .upload-area input { display: none; }
+<header>
+  <img class="logo" src="https://i.ibb.co/gd3RWdc/fire-cart-logo.png" alt="logo">
+  <div class="brand">
+    <h1>Card Collector List Generator</h1>
+    <p>Before It Runs Out</p>
+  </div>
+  <div style="margin-left:auto;color:#fff;font-size:.85rem">Contact: <a href="mailto:buyitfastnow@gmail.com" style="color:#fff;text-decoration:underline">buyitfastnow@gmail.com</a></div>
+</header>
 
-    .button-group { display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
-    button { padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer; color: #fff; }
-    button.download { background: #2563eb; }
-    button.dedupe { background: #6b7280; }
-    button.clear { background: #dc2626; }
-    button.remove { background: #b91c1c; font-size: 0.8rem; }
+<main>
+  <div class="topnote">
+    <div class="small">Follow the steps: Upload → Generate → Pay → Download</div>
+    <div class="tabs" role="tablist" aria-label="Collection types">
+      <button class="tab active" data-section="trading">Trading Cards</button>
+      <button class="tab" data-section="comics">Comic Books</button>
+      <button class="tab" data-section="basketball">Basketball</button>
+      <button class="tab" data-section="toys">Toys</button>
+    </div>
+  </div>
 
-    table { width: 95%; margin: 1rem auto; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-    th, td { border: 1px solid #d1d5db; padding: 0.5rem; text-align: center; vertical-align: middle; }
-    th { background: #f3f4f6; cursor: pointer; user-select: none; }
-    th.sort-asc::after { content: " ▲"; }
-    th.sort-desc::after { content: " ▼"; }
-    td img.preview-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 0.25rem; }
+  <!-- If client ID placeholder still present show instructions -->
+  <div id="clientIdNotice" class="notice" style="display:none">
+    <strong>Action required:</strong> Your PayPal sandbox Client ID is not set. To test payments, open <code>index.html</code> in your repo, replace <code>PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE</code> (in the &lt;script&gt; tag's src) with your sandbox client id from the PayPal Developer Dashboard, and save. Quick steps are shown in the popup after page load.
+  </div>
 
-    footer { background: #111827; color: #9ca3af; text-align: center; padding: 1rem; margin-top: 2rem; font-size: 0.9rem; }
-    footer a { color: #60a5fa; text-decoration: none; }
+  <div class="layout">
+    <div>
+      <div class="panel">
+        <h3 style="margin-top:0">Upload (per section)</h3>
+        <div class="small">Select images (you can upload many). Filenames help auto-fill data.</div>
+
+        <div style="margin-top:12px">
+          <div id="uploadTrading" class="upload-area" title="Click to upload Trading Cards"><div><strong>Trading Cards</strong><div class="small">Click or drop images here</div></div><input id="inputTrading" type="file" accept="image/*" multiple><div id="previewTrading" class="preview-list"></div></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div id="uploadComics" class="upload-area" title="Click to upload Comic Book covers"><div><strong>Comic Books</strong><div class="small">Click or drop images here</div></div><input id="inputComics" type="file" accept="image/*" multiple><div id="previewComics" class="preview-list"></div></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div id="uploadBasket" class="upload-area" title="Click to upload Basketball Cards"><div><strong>Basketball Cards</strong><div class="small">Click or drop images here</div></div><input id="inputBasket" type="file" accept="image/*" multiple><div id="previewBasket" class="preview-list"></div></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div id="uploadToys" class="upload-area" title="Click to upload Toys/Collectibles"><div><strong>Toys / Collectibles</strong><div class="small">Click or drop images here</div></div><input id="inputToys" type="file" accept="image/*" multiple><div id="previewToys" class="preview-list"></div></div>
+        </div>
+
+        <div style="margin-top:12px" class="small">Tip: Name files like <code>PlayerName_1998_Topps_12.jpg</code> to help auto-fill fields.</div>
+        <div style="margin-top:10px"><button id="btnLoadSample" class="btn btn-ghost" style="background:#fff;color:#111;border:1px solid rgba(2,6,23,.06)">Load sample data</button></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <h3 style="margin:0">Your List (editable)</h3>
+          <div class="controls">
+            <button id="btnDedupe" class="btn btn-ghost" style="background:#fff;color:#111;border:1px solid rgba(2,6,23,.06)">Dedupe</button>
+            <button id="btnClear" class="btn btn-ghost" style="background:#fff;color:#111;border:1px solid rgba(2,6,23,.06)">Clear</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;overflow:auto">
+          <table id="listTable" aria-live="polite">
+            <thead><tr><th style="width:40px">#</th><th>Preview</th><th>Name</th><th>Year</th><th>Brand</th><th>Card #</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+          <button id="btnGenerate" class="btn" style="background:#0ea5e9;padding:12px 18px;font-size:1rem">Generate my list</button>
+
+          <!-- PayPal buy button area -->
+          <div id="paypalBuy" style="min-width:240px"></div>
+
+          <!-- Hidden download button (hidden until payment success) -->
+          <button id="btnDownload" class="btn" style="background:var(--success);display:none">Download CSV</button>
+
+          <div style="margin-left:auto;color:var(--muted)" id="statusLine">Locked — pay $1 to unlock download</div>
+        </div>
+
+        <div style="margin-top:10px" class="small">After payment, your CSV will download. We process files in your browser and do not store them.</div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h4 style="margin:0 0 8px">Donate (custom amount)</h4>
+        <div class="small">Support development — choose any amount and click Donate.</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <input id="donationAmount" type="number" min="1" placeholder="$5" style="padding:8px;border-radius:8px;border:1px solid #e6eef8;width:120px">
+          <div id="paypalDonate"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h4 style="margin:0 0 8px">Privacy & Terms</h4>
+        <div class="small">We process your uploads in the browser to generate the list. We don't store your images or CSVs on our servers. For emailed delivery you must enable it via account settings (server required).</div>
+        <div style="margin-top:8px" class="links"><a class="link" href="#terms" onclick="alert('Terms: Use the generated CSV for personal tracking. No valuations provided.')">Terms</a> · <a class="link" href="#privacy" onclick="alert('Privacy: Files processed in browser. No storage.')">Privacy</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toasts" aria-hidden="true"></div>
+
+  <div class="footer">
+    <div>Contact: <a href="mailto:buyitfastnow@gmail.com">buyitfastnow@gmail.com</a></div>
+    <div>© 2025 Charles P. / Game7ime</div>
+  </div>
+</main>
+
+<!-- Scripts -->
+<script>
+/* ---------- state ---------- */
+const state = { trading: [], comics: [], basketball: [], toys: [], nextId:1, csvBuilt:false, paid:false };
+
+/* ---------- helpers ---------- */
+function showToast(type,text){
+  const el = document.createElement('div'); el.className = 'toast ' + (type||'info'); el.innerHTML = `<div style="font-size:16px">${type==='success'?'✅':type==='warn'?'⚠️':type==='error'?'❌':'ℹ️'}</div><div style="padding-left:8px">${text}</div>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=> el.remove(),3800);
+}
+function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- DOM refs ---------- */
+const inputTrading = document.getElementById('inputTrading');
+const inputComics = document.getElementById('inputComics');
+const inputBasket = document.getElementById('inputBasket');
+const inputToys = document.getElementById('inputToys');
+const previewTrading = document.getElementById('previewTrading');
+const previewComics = document.getElementById('previewComics');
+const previewBasket = document.getElementById('previewBasket');
+const previewToys = document.getElementById('previewToys');
+const tbody = document.querySelector('#listTable tbody');
+const btnGenerate = document.getElementById('btnGenerate');
+const btnDownload = document.getElementById('btnDownload');
+const statusLine = document.getElementById('statusLine');
+const clientIdNotice = document.getElementById('clientIdNotice');
+
+/* ---------- file handling and mock recognition ---------- */
+function mockRecognizeFromName(filename){
+  const base = filename.replace(/\.[^/.]+$/,'');
+  const parts = base.split(/[_-]+/).map(p=>p.trim()).filter(Boolean);
+  const name = parts[0]||'Unknown';
+  const year = parts.find(p=>/^\d{4}$/.test(p)) || '';
+  const brands = ['Topps','Upper Deck','Fleer','Panini','Donruss','Bowman','Score'];
+  const brand = parts.find(p=>brands.map(b=>b.toLowerCase()).includes(p.toLowerCase())) || '';
+  const numMatch = base.match(/#\s?(\d{1,4})/) || base.match(/No\.?\s?(\d{1,4})/) || base.match(/(\d{1,4})$/);
+  const number = (numMatch && numMatch[1]) ? ('#'+numMatch[1]) : '';
+  return { name, year, brand, number };
+}
+
+function addFiles(files, section){
+  if(!files || !files.length) return 0;
+  const arr = Array.from(files);
+  arr.forEach(file=>{
+    const preview = URL.createObjectURL(file);
+    const rec = mockRecognizeFromName(file.name || '');
+    const card = { id: state.nextId++, preview, name: rec.name, year: rec.year, brand: rec.brand, number: rec.number, filename: file.name };
+    state[section].push(card);
+  });
+  renderPreviews(section);
+  renderTable();
+  return arr.length;
+}
+
+/* ---------- previews & table ---------- */
+function renderPreviews(section){
+  const container = section==='trading' ? previewTrading : section==='comics' ? previewComics : section==='basketball' ? previewBasket : previewToys;
+  container.innerHTML = '';
+  (state[section]||[]).slice(0,30).forEach(c=>{
+    const d = document.createElement('div'); d.className='preview-item';
+    d.innerHTML = `<div style="height:56px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border-radius:6px;margin-bottom:6px"><img src="${c.preview}" style="max-width:100%;max-height:52px;border-radius:6px" alt=""></div>
+      <div style="font-weight:600">${escapeHtml(c.name)}</div><div class="small">${escapeHtml(c.brand)} ${escapeHtml(c.year)}</div>`;
+    container.appendChild(d);
+  });
+}
+
+function renderTable(){
+  tbody.innerHTML = '';
+  const all = [...state.trading, ...state.comics, ...state.basketball, ...state.toys];
+  all.forEach((c,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td><img class="thumb" src="${c.preview}" alt=""></td>
+      <td contenteditable>${escapeHtml(c.name)}</td><td contenteditable>${escapeHtml(c.year)}</td><td contenteditable>${escapeHtml(c.brand)}</td><td contenteditable>${escapeHtml(c.number)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* update state after inline edits */
+tbody.addEventListener('focusout', ()=>{
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const combined = [...state.trading, ...state.comics, ...state.basketball, ...state.toys];
+  rows.forEach((tr,i)=>{
+    const cells = tr.querySelectorAll('td');
+    if(!combined[i]) return;
+    combined[i].name = cells[2].textContent.trim();
+    combined[i].year = cells[3].textContent.trim();
+    combined[i].brand = cells[4].textContent.trim();
+    combined[i].number = cells[5].textContent.trim();
+  });
+});
+
+/* ---------- connect inputs and drag/drop ---------- */
+['dragenter','dragover'].forEach(ev=>{
+  document.querySelectorAll('.upload-area').forEach(el=> el.addEventListener(ev, e=>{ e.preventDefault(); el.style.background='#f0f9ff'; }));
+});
+['dragleave','drop'].forEach(ev=>{
+  document.querySelectorAll('.upload-area').forEach(el=> el.addEventListener(ev, e=>{ e.preventDefault(); el.style.background=''; }));
+});
+
+document.getElementById('uploadTrading').addEventListener('click', ()=> inputTrading.click());
+inputTrading.addEventListener('change', e=> { const n = addFiles(e.target.files,'trading'); showToast('success', `${n} trading image(s) added`); e.target.value=''; });
+document.getElementById('uploadComics').addEventListener('click', ()=> inputComics.click());
+inputComics.addEventListener('change', e=> { const n = addFiles(e.target.files,'comics'); showToast('success', `${n} comic image(s) added`); e.target.value=''; });
+document.getElementById('uploadBasket').addEventListener('click', ()=> inputBasket.click());
+inputBasket.addEventListener('change', e=> { const n = addFiles(e.target.files,'basketball'); showToast('success', `${n} basketball image(s) added`); e.target.value=''; });
+document.getElementById('uploadToys').addEventListener('click', ()=> inputToys.click());
+inputToys.addEventListener('change', e=> { const n = addFiles(e.target.files,'toys'); showToast('success', `${n} toy image(s) added`); e.target.value=''; });
+
+/* ---------- sample loader ---------- */
+document.getElementById('btnLoadSample').addEventListener('click', ()=>{
+  state.trading.push({id:state.nextId++, preview:'https://i.ibb.co/8mD1wGq/sample-card1.jpg', name:'Player A', year:'1997', brand:'Topps', number:'#12', filename:'PlayerA_1997_Topps_12.jpg'});
+  state.comics.push({id:state.nextId++, preview:'https://i.ibb.co/7N9mS9w/sample-comic.jpg', name:'Comic #1', year:'1985', brand:'Marvel', number:'#1', filename:'Comic1_1985_Marvel_1.jpg'});
+  state.basketball.push({id:state.nextId++, preview:'https://i.ibb.co/5RkTq6v/sample-bball.jpg', name:'Hooper X', year:'1999', brand:'Panini', number:'#23', filename:'HooperX_1999_Panini_23.jpg'});
+  renderPreviews('trading'); renderPreviews('comics'); renderPreviews('basketball'); renderTable();
+  showToast('success','Sample items loaded');
+});
+
+/* ---------- dedupe / clear ---------- */
+document.getElementById('btnDedupe').addEventListener('click', ()=>{
+  const all = [...state.trading,...state.comics,...state.basketball,...state.toys];
+  if(!all.length){ showToast('warn','No items to dedupe'); return; }
+  const seen = new Set(); let removed=0;
+  const filtered = all.filter(c=>{
+    const key = `${(c.name||'').toLowerCase()}|${(c.year||'')}|${(c.brand||'').toLowerCase()}|${(c.number||'')}`;
+    if(seen.has(key)){ removed++; return false; } seen.add(key); return true;
+  });
+  // Reassign back into sections proportionally (simple approach)
+  const tLen = state.trading.length, cLen = state.comics.length, bLen = state.basketball.length;
+  state.trading = filtered.slice(0, Math.min(tLen, filtered.length));
+  state.comics = filtered.slice(state.trading.length, state.trading.length + Math.min(cLen, filtered.length - state.trading.length));
+  state.basketball = filtered.slice(state.trading.length + state.comics.length, state.trading.length + state.comics.length + Math.min(bLen, filtered.length - state.trading.length - state.comics.length));
+  state.toys = filtered.slice(state.trading.length + state.comics.length + state.basketball.length);
+  renderPreviews('trading'); renderPreviews('comics'); renderPreviews('basketball'); renderPreviews('toys'); renderTable();
+  showToast('success', `Duplicates removed: ${removed}`);
+});
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  if(!confirm('Clear all items and previews?')) return;
+  state.trading=[]; state.comics=[]; state.basketball=[]; state.toys=[]; state.nextId=1; renderPreviews('trading'); renderPreviews('comics'); renderPreviews('basketball'); renderPreviews('toys'); renderTable();
+  showToast('info','All cleared'); state.paid=false; document.getElementById('btnDownload').style.display='none'; statusLine.textContent='Locked — pay $1 to unlock download';
+});
+
+/* ---------- Generate CSV (build only, but hidden until payment) ---------- */
+function buildCSV(){
+  const rows = [];
+  const all = [...state.trading, ...state.comics, ...state.basketball, ...state.toys];
+  all.forEach((c,i)=>{
+    rows.push({
+      index: i+1,
+      category: state.trading.includes(c) ? 'Trading' : (state.comics.includes(c) ? 'Comics' : (state.basketball.includes(c)?'Basketball':'Toys')),
+      name: c.name||'',
+      year: c.year||'',
+      brand: c.brand||'',
+      card_number: c.number||'',
+      filename: c.filename||''
+    });
+  });
+  if(!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(',')].concat(rows.map(r=> headers.map(h=> `"${String(r[h]||'').replace(/"/g,'""')}"`).join(','))).join('\n');
+  state.csvBuilt = true;
+  return csv;
+}
+
+/* generate button builds CSV and scrolls to payment */
+document.getElementById('btnGenerate').addEventListener('click', ()=>{
+  const csv = buildCSV();
+  if(!csv){ showToast('warn','Please upload items before generating'); return; }
+  showToast('success','List generated — complete payment to unlock download');
+  setTimeout(()=> {
+    document.getElementById('paypalBuy').scrollIntoView({behavior:'smooth', block:'center'});
+  }, 350);
+});
+
+/* secure download (only called after PayPal success) */
+function secureDownload(){
+  const csv = buildCSV();
+  if(!csv){ showToast('warn','Nothing to download'); return; }
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = `card_collection_${Date.now()}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  showToast('success','CSV downloaded');
+}
+
+/* ---------- PayPal setup (Buy $1) ---------- */
+/* IMPORTANT: Replace PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE above with your sandbox client-id to enable real sandbox testing.
+   If you haven't replaced it yet, we show a helpful notice so you know what to do. */
+(function checkClientId(){
+  const sdkScript = document.getElementById('paypal-sdk');
+  if(!sdkScript) return;
+  const src = sdkScript.src || '';
+  if(src.includes('PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE')) {
+    clientIdNotice.style.display = 'block';
+    // Also show a small modal/instruction via console
+    console.warn('PayPal sandbox client id placeholder detected. Replace PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE with your sandbox client id in the script src.');
+  } else {
+    clientIdNotice.style.display = 'none';
+    initPayPalButtons(); // init now that a client id is present
+  }
+})();
+
+/* Initialize PayPal Buttons dynamically (so script tag can be replaced with your client id) */
+function initPayPalButtons(){
+  if(typeof paypal === 'undefined'){ console.error('PayPal SDK not loaded'); clientIdNotice.style.display='block'; return; }
+
+  // Buy button: fixed $1
+  paypal.Buttons({
+    style:{layout:'horizontal', color:'blue', shape:'rect', label:'pay'},
+    createOrder: function(data, actions){
+      // require generated CSV before allowing payment
+      if(!state.csvBuilt){ alert('Please generate your list first. Click "Generate my list"'); throw new Error('List not generated'); }
+      return actions.order.create({
+        purchase_units:[{ amount:{ value:'1.00'}, description:'Card Collector — list generation' }]
+      });
+    },
+    onApprove: function(data, actions){
+      return actions.order.capture().then(function(details){
+        state.paid = true;
+        statusLine.textContent = 'Unlocked — downloading now';
+        // show download button smoothly and auto download after a moment
+        document.getElementById('btnDownload').style.display = 'inline-block';
+        setTimeout(()=> secureDownload(), 600);
+      });
+    },
+    onError: function(err){ console.error(err); showToast('error','Payment error — try again'); }
+  }).render('#paypalBuy');
+
+  // Donate button: custom amount from input
+  const donateContainer = document.getElementById('paypalDonate');
+  // create a temporary hidden container for the donate button when needed
+  paypal.Buttons({
+    style:{layout:'horizontal', color:'gold', shape:'pill', label:'donate'},
+    createOrder: function(data, actions){
+      const amtEl = document.getElementById('donationAmount');
+      let val = parseFloat(amtEl.value);
+      if(!val || val < 1) { alert('Enter a donation amount ($1 or more)'); throw new Error('Invalid donation amount'); }
+      return actions.order.create({ purchase_units:[{ amount:{ value: val.toFixed(2) }, description:'Donation' }]});
+    },
+    onApprove: function(data, actions){ return actions.order.capture().then(()=> showToast('success','Thanks for your donation!')); },
+    onError: function(err){ console.error(err); showToast('error','Donation error'); }
+  }).render('#paypalDonate');
+
+}
+
+/* ---------- show notice with quick steps to paste client id via GitHub web editor ---------- */
+if(document.getElementById('clientIdNotice').style.display !== 'none'){
+  // small popup after load to guide user
+  setTimeout(()=>{
+    alert('PayPal sandbox Client ID not set. Quick steps:\n1) Open your repository on GitHub and click index.html\n2) Click the pencil ✏️ to edit the file\n3) Replace PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE in the <script> src with your sandbox client id\n4) Commit changes. Your page will auto-load with sandbox PayPal buttons.');
+  },800);
+}
+
+/* ---------- Init previews & UI ---------- */
+renderPreviews('trading'); renderPreviews('comics'); renderPreviews('basketball'); renderPreviews('toys'); renderTable();
+
+</script>
+</body>
+</html>
+<header>
+  <img class="logo" src="https://i.ibb.co/gd3RWdc/fire-cart-logo.png" alt="logo">
+  <div class="brand">
+    <h1>Card Collector List Generator</h1>
+    <p>Before It Runs Out</p>
+  </div>
+  <div style="margin-left:auto;color:#fff;font-size:.85rem">Contact: <a href="mailto:buyitfastnow@gmail.com" style="color:#fff;text-decoration:underline">buyitfastnow@gmail.com</a></div>
+</header>
+
+<main>
+  <div class="topnote">
+    <div class="small">Follow the steps: Upload → Generate → Pay → Download</div>
+    <div class="tabs" role="tablist" aria-label="Collection types">
+      <button class="tab active" data-section="trading">Trading Cards</button>
+      <button class="tab" data-section="comics">Comic Books</button>
+      <button class="tab" data-section="basketball">Basketball</button>
+      <button class="tab" data-section="toys">Toys</button>
+    </div>
+  </div>
+
+  <!-- If client ID placeholder still present show instructions -->
+  <div id="clientIdNotice" class="notice" style="display:none">
+    <strong>Action required:</strong> Your PayPal sandbox Client ID is not set. To test payments, open <code>index.html</code> in your repo, replace <code>PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE</code> (in the &lt;script&gt; tag's src) with your sandbox client id from the PayPal Developer Dashboard, and save. Quick steps are shown in the popup after page load.
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="panel">
+        <h3 style="margin-top:0">Upload (per section)</h3>
+        <div class="small">Select images (you can upload many). Filenames help auto-fill data.</div>
+
+        <div style="margin-top:12px">
+          <div id="uploadTrading" class="upload-area" title="Click to upload Trading Cards"><div><strong>Trading Cards</strong><div class="small">Click or drop images here</div></div><input id="inputTrading" type="file" accept="image/*" multiple><div id="previewTrading" class="preview-list"></div></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div id="uploadComics" class="upload-area" title="Click to upload Comic Book covers"><div><strong>Comic Books</strong><div class="small">Click or drop images here</div></div><input id="inputComics" type="file" accept="image/*" multiple><div id="previewComics" class="preview-list"></div></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div id="uploadBasket" class="upload-area" title="Click to upload Basketball Cards"><div><strong>Basketball Cards</strong><div class="small">Click or drop images here</div></div><input id="inputBasket" type="file" accept="image/*" multiple><div id="previewBasket" class="preview-list"></div></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div id="uploadToys" class="upload-area" title="Click to upload Toys/Collectibles"><div><strong>Toys / Collectibles</strong><div class="small">Click or drop images here</div></div><input id="inputToys" type="file" accept="image/*" multiple><div id="previewToys" class="preview-list"></div></div>
+        </div>
+
+        <div style="margin-top:12px" class="small">Tip: Name files like <code>PlayerName_1998_Topps_12.jpg</code> to help auto-fill fields.</div>
+        <div style="margin-top:10px"><button id="btnLoadSample" class="btn btn-ghost" style="background:#fff;color:#111;border:1px solid rgba(2,6,23,.06)">Load sample data</button></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <h3 style="margin:0">Your List (editable)</h3>
+          <div class="controls">
+            <button id="btnDedupe" class="btn btn-ghost" style="background:#fff;color:#111;border:1px solid rgba(2,6,23,.06)">Dedupe</button>
+            <button id="btnClear" class="btn btn-ghost" style="background:#fff;color:#111;border:1px solid rgba(2,6,23,.06)">Clear</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;overflow:auto">
+          <table id="listTable" aria-live="polite">
+            <thead><tr><th style="width:40px">#</th><th>Preview</th><th>Name</th><th>Year</th><th>Brand</th><th>Card #</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+          <button id="btnGenerate" class="btn" style="background:#0ea5e9;padding:12px 18px;font-size:1rem">Generate my list</button>
+
+          <!-- PayPal buy button area -->
+          <div id="paypalBuy" style="min-width:240px"></div>
+
+          <!-- Hidden download button (hidden until payment success) -->
+          <button id="btnDownload" class="btn" style="background:var(--success);display:none">Download CSV</button>
+
+          <div style="margin-left:auto;color:var(--muted)" id="statusLine">Locked — pay $1 to unlock download</div>
+        </div>
+
+        <div style="margin-top:10px" class="small">After payment, your CSV will download. We process files in your browser and do not store them.</div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h4 style="margin:0 0 8px">Donate (custom amount)</h4>
+        <div class="small">Support development — choose any amount and click Donate.</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <input id="donationAmount" type="number" min="1" placeholder="$5" style="padding:8px;border-radius:8px;border:1px solid #e6eef8;width:120px">
+          <div id="paypalDonate"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h4 style="margin:0 0 8px">Privacy & Terms</h4>
+        <div class="small">We process your uploads in the browser to generate the list. We don't store your images or CSVs on our servers. For emailed delivery you must enable it via account settings (server required).</div>
+        <div style="margin-top:8px" class="links"><a class="link" href="#terms" onclick="alert('Terms: Use the generated CSV for personal tracking. No valuations provided.')">Terms</a> · <a class="link" href="#privacy" onclick="alert('Privacy: Files processed in browser. No storage.')">Privacy</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toasts" aria-hidden="true"></div>
+
+  <div class="footer">
+    <div>Contact: <a href="mailto:buyitfastnow@gmail.com">buyitfastnow@gmail.com</a></div>
+    <div>© 2025 Charles P. / Game7ime</div>
+  </div>
+</main>
+
+<!-- Scripts -->
+<script>
+/* ---------- state ---------- */
+const state = { trading: [], comics: [], basketball: [], toys: [], nextId:1, csvBuilt:false, paid:false };
+
+/* ---------- helpers ---------- */
+function showToast(type,text){
+  const el = document.createElement('div'); el.className = 'toast ' + (type||'info'); el.innerHTML = `<div style="font-size:16px">${type==='success'?'✅':type==='warn'?'⚠️':type==='error'?'❌':'ℹ️'}</div><div style="padding-left:8px">${text}</div>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=> el.remove(),3800);
+}
+function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- DOM refs ---------- */
+const inputTrading = document.getElementById('inputTrading');
+const inputComics = document.getElementById('inputComics');
+const inputBasket = document.getElementById('inputBasket');
+const inputToys = document.getElementById('inputToys');
+const previewTrading = document.getElementById('previewTrading');
+const previewComics = document.getElementById('previewComics');
+const previewBasket = document.getElementById('previewBasket');
+const previewToys = document.getElementById('previewToys');
+const tbody = document.querySelector('#listTable tbody');
+const btnGenerate = document.getElementById('btnGenerate');
+const btnDownload = document.getElementById('btnDownload');
+const statusLine = document.getElementById('statusLine');
+const clientIdNotice = document.getElementById('clientIdNotice');
+
+/* ---------- file handling and mock recognition ---------- */
+function mockRecognizeFromName(filename){
+  const base = filename.replace(/\.[^/.]+$/,'');
+  const parts = base.split(/[_-]+/).map(p=>p.trim()).filter(Boolean);
+  const name = parts[0]||'Unknown';
+  const year = parts.find(p=>/^\d{4}$/.test(p)) || '';
+  const brands = ['Topps','Upper Deck','Fleer','Panini','Donruss','Bowman','Score'];
+  const brand = parts.find(p=>brands.map(b=>b.toLowerCase()).includes(p.toLowerCase())) || '';
+  const numMatch = base.match(/#\s?(\d{1,4})/) || base.match(/No\.?\s?(\d{1,4})/) || base.match(/(\d{1,4})$/);
+  const number = (numMatch && numMatch[1]) ? ('#'+numMatch[1]) : '';
+  return { name, year, brand, number };
+}
+
+function addFiles(files, section){
+  if(!files || !files.length) return 0;
+  const arr = Array.from(files);
+  arr.forEach(file=>{
+    const preview = URL.createObjectURL(file);
+    const rec = mockRecognizeFromName(file.name || '');
+    const card = { id: state.nextId++, preview, name: rec.name, year: rec.year, brand: rec.brand, number: rec.number, filename: file.name };
+    state[section].push(card);
+  });
+  renderPreviews(section);
+  renderTable();
+  return arr.length;
+}
+
+/* ---------- previews & table ---------- */
+function renderPreviews(section){
+  const container = section==='trading' ? previewTrading : section==='comics' ? previewComics : section==='basketball' ? previewBasket : previewToys;
+  container.innerHTML = '';
+  (state[section]||[]).slice(0,30).forEach(c=>{
+    const d = document.createElement('div'); d.className='preview-item';
+    d.innerHTML = `<div style="height:56px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border-radius:6px;margin-bottom:6px"><img src="${c.preview}" style="max-width:100%;max-height:52px;border-radius:6px" alt=""></div>
+      <div style="font-weight:600">${escapeHtml(c.name)}</div><div class="small">${escapeHtml(c.brand)} ${escapeHtml(c.year)}</div>`;
+    container.appendChild(d);
+  });
+}
+
+function renderTable(){
+  tbody.innerHTML = '';
+  const all = [...state.trading, ...state.comics, ...state.basketball, ...state.toys];
+  all.forEach((c,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td><img class="thumb" src="${c.preview}" alt=""></td>
+      <td contenteditable>${escapeHtml(c.name)}</td><td contenteditable>${escapeHtml(c.year)}</td><td contenteditable>${escapeHtml(c.brand)}</td><td contenteditable>${escapeHtml(c.number)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* update state after inline edits */
+tbody.addEventListener('focusout', ()=>{
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const combined = [...state.trading, ...state.comics, ...state.basketball, ...state.toys];
+  rows.forEach((tr,i)=>{
+    const cells = tr.querySelectorAll('td');
+    if(!combined[i]) return;
+    combined[i].name = cells[2].textContent.trim();
+    combined[i].year = cells[3].textContent.trim();
+    combined[i].brand = cells[4].textContent.trim();
+    combined[i].number = cells[5].textContent.trim();
+  });
+});
+
+/* ---------- connect inputs and drag/drop ---------- */
+['dragenter','dragover'].forEach(ev=>{
+  document.querySelectorAll('.upload-area').forEach(el=> el.addEventListener(ev, e=>{ e.preventDefault(); el.style.background='#f0f9ff'; }));
+});
+['dragleave','drop'].forEach(ev=>{
+  document.querySelectorAll('.upload-area').forEach(el=> el.addEventListener(ev, e=>{ e.preventDefault(); el.style.background=''; }));
+});
+
+document.getElementById('uploadTrading').addEventListener('click', ()=> inputTrading.click());
+inputTrading.addEventListener('change', e=> { const n = addFiles(e.target.files,'trading'); showToast('success', `${n} trading image(s) added`); e.target.value=''; });
+document.getElementById('uploadComics').addEventListener('click', ()=> inputComics.click());
+inputComics.addEventListener('change', e=> { const n = addFiles(e.target.files,'comics'); showToast('success', `${n} comic image(s) added`); e.target.value=''; });
+document.getElementById('uploadBasket').addEventListener('click', ()=> inputBasket.click());
+inputBasket.addEventListener('change', e=> { const n = addFiles(e.target.files,'basketball'); showToast('success', `${n} basketball image(s) added`); e.target.value=''; });
+document.getElementById('uploadToys').addEventListener('click', ()=> inputToys.click());
+inputToys.addEventListener('change', e=> { const n = addFiles(e.target.files,'toys'); showToast('success', `${n} toy image(s) added`); e.target.value=''; });
+
+/* ---------- sample loader ---------- */
+document.getElementById('btnLoadSample').addEventListener('click', ()=>{
+  state.trading.push({id:state.nextId++, preview:'https://i.ibb.co/8mD1wGq/sample-card1.jpg', name:'Player A', year:'1997', brand:'Topps', number:'#12', filename:'PlayerA_1997_Topps_12.jpg'});
+  state.comics.push({id:state.nextId++, preview:'https://i.ibb.co/7N9mS9w/sample-comic.jpg', name:'Comic #1', year:'1985', brand:'Marvel', number:'#1', filename:'Comic1_1985_Marvel_1.jpg'});
+  state.basketball.push({id:state.nextId++, preview:'https://i.ibb.co/5RkTq6v/sample-bball.jpg', name:'Hooper X', year:'1999', brand:'Panini', number:'#23', filename:'HooperX_1999_Panini_23.jpg'});
+  renderPreviews('trading'); renderPreviews('comics'); renderPreviews('basketball'); renderTable();
+  showToast('success','Sample items loaded');
+});
+
+/* ---------- dedupe / clear ---------- */
+document.getElementById('btnDedupe').addEventListener('click', ()=>{
+  const all = [...state.trading,...state.comics,...state.basketball,...state.toys];
+  if(!all.length){ showToast('warn','No items to dedupe'); return; }
+  const seen = new Set(); let removed=0;
+  const filtered = all.filter(c=>{
+    const key = `${(c.name||'').toLowerCase()}|${(c.year||'')}|${(c.brand||'').toLowerCase()}|${(c.number||'')}`;
+    if(seen.has(key)){ removed++; return false; } seen.add(key); return true;
+  });
+  // Reassign back into sections proportionally (simple approach)
+  const tLen = state.trading.length, cLen = state.comics.length, bLen = state.basketball.length;
+  state.trading = filtered.slice(0, Math.min(tLen, filtered.length));
+  state.comics = filtered.slice(state.trading.length, state.trading.length + Math.min(cLen, filtered.length - state.trading.length));
+  state.basketball = filtered.slice(state.trading.length + state.comics.length, state.trading.length + state.comics.length + Math.min(bLen, filtered.length - state.trading.length - state.comics.length));
+  state.toys = filtered.slice(state.trading.length + state.comics.length + state.basketball.length);
+  renderPreviews('trading'); renderPreviews('comics'); renderPreviews('basketball'); renderPreviews('toys'); renderTable();
+  showToast('success', `Duplicates removed: ${removed}`);
+});
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  if(!confirm('Clear all items and previews?')) return;
+  state.trading=[]; state.comics=[]; state.basketball=[]; state.toys=[]; state.nextId=1; renderPreviews('trading'); renderPreviews('comics'); renderPreviews('basketball'); renderPreviews('toys'); renderTable();
+  showToast('info','All cleared'); state.paid=false; document.getElementById('btnDownload').style.display='none'; statusLine.textContent='Locked — pay $1 to unlock download';
+});
+
+/* ---------- Generate CSV (build only, but hidden until payment) ---------- */
+function buildCSV(){
+  const rows = [];
+  const all = [...state.trading, ...state.comics, ...state.basketball, ...state.toys];
+  all.forEach((c,i)=>{
+    rows.push({
+      index: i+1,
+      category: state.trading.includes(c) ? 'Trading' : (state.comics.includes(c) ? 'Comics' : (state.basketball.includes(c)?'Basketball':'Toys')),
+      name: c.name||'',
+      year: c.year||'',
+      brand: c.brand||'',
+      card_number: c.number||'',
+      filename: c.filename||''
+    });
+  });
+  if(!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(',')].concat(rows.map(r=> headers.map(h=> `"${String(r[h]||'').replace(/"/g,'""')}"`).join(','))).join('\n');
+  state.csvBuilt = true;
+  return csv;
+}
+
+/* generate button builds CSV and scrolls to payment */
+document.getElementById('btnGenerate').addEventListener('click', ()=>{
+  const csv = buildCSV();
+  if(!csv){ showToast('warn','Please upload items before generating'); return; }
+  showToast('success','List generated — complete payment to unlock download');
+  setTimeout(()=> {
+    document.getElementById('paypalBuy').scrollIntoView({behavior:'smooth', block:'center'});
+  }, 350);
+});
+
+/* secure download (only called after PayPal success) */
+function secureDownload(){
+  const csv = buildCSV();
+  if(!csv){ showToast('warn','Nothing to download'); return; }
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = `card_collection_${Date.now()}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  showToast('success','CSV downloaded');
+}
+
+/* ---------- PayPal setup (Buy $1) ---------- */
+/* IMPORTANT: Replace PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE above with your sandbox client-id to enable real sandbox testing.
+   If you haven't replaced it yet, we show a helpful notice so you know what to do. */
+(function checkClientId(){
+  const sdkScript = document.getElementById('paypal-sdk');
+  if(!sdkScript) return;
+  const src = sdkScript.src || '';
+  if(src.includes('PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE')) {
+    clientIdNotice.style.display = 'block';
+    // Also show a small modal/instruction via console
+    console.warn('PayPal sandbox client id placeholder detected. Replace PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE with your sandbox client id in the script src.');
+  } else {
+    clientIdNotice.style.display = 'none';
+    initPayPalButtons(); // init now that a client id is present
+  }
+})();
+
+/* Initialize PayPal Buttons dynamically (so script tag can be replaced with your client id) */
+function initPayPalButtons(){
+  if(typeof paypal === 'undefined'){ console.error('PayPal SDK not loaded'); clientIdNotice.style.display='block'; return; }
+
+  // Buy button: fixed $1
+  paypal.Buttons({
+    style:{layout:'horizontal', color:'blue', shape:'rect', label:'pay'},
+    createOrder: function(data, actions){
+      // require generated CSV before allowing payment
+      if(!state.csvBuilt){ alert('Please generate your list first. Click "Generate my list"'); throw new Error('List not generated'); }
+      return actions.order.create({
+        purchase_units:[{ amount:{ value:'1.00'}, description:'Card Collector — list generation' }]
+      });
+    },
+    onApprove: function(data, actions){
+      return actions.order.capture().then(function(details){
+        state.paid = true;
+        statusLine.textContent = 'Unlocked — downloading now';
+        // show download button smoothly and auto download after a moment
+        document.getElementById('btnDownload').style.display = 'inline-block';
+        setTimeout(()=> secureDownload(), 600);
+      });
+    },
+    onError: function(err){ console.error(err); showToast('error','Payment error — try again'); }
+  }).render('#paypalBuy');
+
+  // Donate button: custom amount from input
+  const donateContainer = document.getElementById('paypalDonate');
+  // create a temporary hidden container for the donate button when needed
+  paypal.Buttons({
+    style:{layout:'horizontal', color:'gold', shape:'pill', label:'donate'},
+    createOrder: function(data, actions){
+      const amtEl = document.getElementById('donationAmount');
+      let val = parseFloat(amtEl.value);
+      if(!val || val < 1) { alert('Enter a donation amount ($1 or more)'); throw new Error('Invalid donation amount'); }
+      return actions.order.create({ purchase_units:[{ amount:{ value: val.toFixed(2) }, description:'Donation' }]});
+    },
+    onApprove: function(data, actions){ return actions.order.capture().then(()=> showToast('success','Thanks for your donation!')); },
+    onError: function(err){ console.error(err); showToast('error','Donation error'); }
+  }).render('#paypalDonate');
+
+}
+
+/* ---------- show notice with quick steps to paste client id via GitHub web editor ---------- */
+if(document.getElementById('clientIdNotice').style.display !== 'none'){
+  // small popup after load to guide user
+  setTimeout(()=>{
+    alert('PayPal sandbox Client ID not set. Quick steps:\n1) Open your repository on GitHub and click index.html\n2) Click the pencil ✏️ to edit the file\n3) Replace PAYPAL_SANDBOX_CLIENT_ID_GOES_HERE in the <script> src with your sandbox client id\n4) Commit changes. Your page will auto-load with sandbox PayPal buttons.');
+  },800);
+}
+
+/* ---------- Init previews & UI ---------- */
+renderPreviews('trading'); renderPreviews('comics'); renderPreviews('basketball'); renderPreviews('toys'); renderTable();
+
+</script>
+</body>
+</html>    footer a { color: #60a5fa; text-decoration: none; }
 
     @media (max-width: 600px) {
       header h1 { font-size: 1.4rem; }
