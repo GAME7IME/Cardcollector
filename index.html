@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Card Collector</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9fafb; margin: 0; padding: 0; }
+    header { text-align: center; padding: 1rem; background: #1d4ed8; color: #fff; }
+    header img { height: 60px; vertical-align: middle; margin-right: 10px; }
+    header h1 { display: inline-block; margin: 0; vertical-align: middle; font-size: 1.8rem; }
+    header p { margin: 0.3rem 0 0; font-size: 1rem; font-style: italic; }
+
+    .mode-selector { margin: 1rem auto; text-align: center; }
+    .mode-selector button { margin: 0.5rem; padding: 0.5rem 1rem; border-radius: 0.5rem; border: none; cursor: pointer; color: #fff; transition: transform 0.2s; }
+    .mode-selector button:hover { transform: scale(1.05); }
+    .mode-selector button.active { box-shadow: 0 0 5px rgba(0,0,0,0.3); }
+    .upload-area { border: 2px dashed #3b82f6; border-radius: 1rem; height: 150px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; margin: 1rem auto; max-width: 500px; }
+    .upload-area:hover { background: #e0f2fe; }
+    .upload-area input { display: none; }
+
+    .button-group { display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
+    button { padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer; color: #fff; }
+    button.download { background: #2563eb; }
+    button.dedupe { background: #6b7280; }
+    button.clear { background: #dc2626; }
+    button.remove { background: #b91c1c; font-size: 0.8rem; }
+
+    table { width: 95%; margin: 1rem auto; border-collapse: collapse; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    th, td { border: 1px solid #d1d5db; padding: 0.5rem; text-align: center; vertical-align: middle; }
+    th { background: #f3f4f6; cursor: pointer; user-select: none; }
+    th.sort-asc::after { content: " ▲"; }
+    th.sort-desc::after { content: " ▼"; }
+    td img.preview-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 0.25rem; }
+
+    footer { background: #111827; color: #9ca3af; text-align: center; padding: 1rem; margin-top: 2rem; font-size: 0.9rem; }
+    footer a { color: #60a5fa; text-decoration: none; }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 1.4rem; }
+      .upload-area { height: 120px; }
+    }
+
+    /* Toast */
+    #toast { visibility: hidden; min-width: 200px; background: #333; color: #fff; text-align: center; border-radius: 4px; padding: 0.7rem; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 0.9rem; }
+    #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+    @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
+    @keyframes fadeout { from { bottom: 30px; opacity: 1; } to { bottom: 0; opacity: 0; } }
+  </style>
+</head>
+<body>
+<header>
+  <img src="https://i.ibb.co/y0r7mC7/logo.png" alt="Card Collector Logo"/>
+  <h1>Card Collector</h1>
+  <p>Before it runs out.</p>
+</header>
+
+<main>
+  <div class="mode-selector">
+    <button class="mode active" data-mode="baseball" style="background:#1d4ed8;">Baseball Cards</button>
+    <button class="mode" data-mode="basketball" style="background:#f97316;">Basketball Cards</button>
+    <button class="mode" data-mode="comics" style="background:#10b981;">Comics</button>
+    <button class="mode" data-mode="toys" style="background:#f59e0b;">Toys/Collectibles</button>
+  </div>
+
+  <label class="upload-area" id="uploadArea">Click or drag & drop to upload cards<input type="file" id="fileInput" multiple accept="image/*"></label>
+
+  <div class="button-group">
+    <button class="dedupe" id="dedupeBtn">Dedupe</button>
+    <button class="download" id="downloadBtn">Download CSV</button>
+    <button class="clear" id="clearBtn">Clear All</button>
+  </div>
+
+  <table id="cardTable">
+    <thead>
+      <tr>
+        <th data-key="id">#</th>
+        <th data-key="preview">Preview</th>
+        <th data-key="name">Name</th>
+        <th data-key="year">Year</th>
+        <th data-key="brand">Brand</th>
+        <th data-key="number">Card #</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div style="text-align:center; margin:2rem;">
+    <div id="paypal-button-container"></div>
+  </div>
+</main>
+
+<footer>
+  <p>Created by Charles P. / Game7ime</p>
+  <p>Contact: <a href="mailto:buyitfastnow@gmail.com">buyitfastnow@gmail.com</a></p>
+  <p><em>Support development with a donation to keep adding features!</em></p>
+</footer>
+
+<div id="toast"></div>
+
+<script src="https://www.paypal.com/sdk/js?client-id=ID8SL32JRNUUYC6&currency=USD"></script>
+<script>
+  let cardList = [];
+  let currentMode = 'baseball';
+  let sortKey = 'id', sortDir = 'asc';
+
+  const fileInput = document.getElementById('fileInput');
+  const cardTableBody = document.querySelector('#cardTable tbody');
+  const toast = document.getElementById("toast");
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.className = "show";
+    setTimeout(()=>{ toast.className = toast.className.replace("show",""); },3000);
+  }
+
+  function renderTable() {
+    cardTableBody.innerHTML = '';
+    cardList.forEach(card=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${card.id}</td>
+        <td><img class='preview-thumb' src='${card.preview}'></td>
+        <td contenteditable>${card.name}</td>
+        <td contenteditable>${card.year}</td>
+        <td contenteditable>${card.brand}</td>
+        <td contenteditable>${card.number}</td>
+        <td><button class='remove' data-id='${card.id}'>Remove</button></td>
+      `;
+      cardTableBody.appendChild(tr);
+    });
+  }
+
+  function downloadCSV() {
+    if(!cardList.length) return showToast("No cards to download.");
+    const headers = ['#','Name','Year','Brand','Card #'];
+    const rows = cardList.map(c => [c.id,c.name,c.year,c.brand,c.number]);
+    const csvContent = [headers,...rows].map(e=>e.map(cell=>`"${cell}"`).join(',')).join('\n');
+    const blob = new Blob(["\ufeff"+csvContent],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `card_collection_${currentMode}.csv`; a.click();
+  }
+
+  document.getElementById('downloadBtn').addEventListener('click',()=>{
+    showToast("Please donate before downloading!");
+  });
+
+  fileInput.addEventListener('change',(e)=>{
+    const files = Array.from(e.target.files);
+    const newCards = files.map((file,i)=>(
+      {id: cardList.length+i+1, name:`${currentMode} ${cardList.length+i+1}`, year:2000+(i%20), brand:'N/A', number:`#${i+1}`, preview:URL.createObjectURL(file)}
+    ));
+    cardList.push(...newCards);
+    renderTable();
+  });
+
+  cardTableBody.addEventListener('click',(e)=>{
+    if(e.target.classList.contains('remove')){
+      const id = parseInt(e.target.dataset.id);
+      cardList = cardList.filter(c=>c.id!==id).map((c,i)=>({...c,id:i+1}));
+      renderTable();
+    }
+  });
+
+  // Mode selector
+  document.querySelectorAll('.mode').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.mode').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMode = btn.dataset.mode;
+      showToast(`Switched to ${btn.textContent}`);
+    });
+  });
+
+  // PayPal Donation
+  paypal.Buttons({
+    createOrder: (data, actions) => {
+      return actions.order.create({
+        purchase_units: [{
+          amount: { value: "1.00" },
+          description: "Card Collector List Download"
+        }]
+      });
+    },
+    onApprove: (data, actions) => {
+      return actions.order.capture().then(details => {
+        showToast("Payment complete. Download unlocked!");
+        document.getElementById('downloadBtn').onclick = downloadCSV;
+      });
+    }
+  }).render('#paypal-button-container');
+</script>
+</body>
+</html>
